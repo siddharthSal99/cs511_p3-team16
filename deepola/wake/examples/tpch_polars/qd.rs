@@ -36,7 +36,7 @@ pub fn query(
         let inst = df.column("l_shipinstruct").unwrap();
         let quant = df.column("l_quantity").unwrap();
         let brand = df.column("p_brand").unwrap();
-        //let size = df.column("p_size").unwrap();
+        let size = df.column("p_size").unwrap();
         let mask = inst.equal("DELIVER IN PERSON").unwrap() 
         // & 
         // (
