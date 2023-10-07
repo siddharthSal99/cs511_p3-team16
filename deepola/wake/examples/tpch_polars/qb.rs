@@ -3,7 +3,6 @@
 use crate::utils::*;
 
 extern crate wake;
-use itertools::Itertools;
 use polars::prelude::DataFrame;
 use polars::prelude::NamedFrom;
 use polars::series::ChunkCompare;
@@ -48,7 +47,7 @@ pub fn query(
     let where_node = AppenderNode::<DataFrame, MapAppender>::new()
         .appender(MapAppender::new(Box::new(|df: &DataFrame| {
             let a = df.column("c_mktsegment").unwrap();
-            let mask = a.eq("AUTOMOBILE").unwrap();
+            let mask = a.equal("AUTOMOBILE").unwrap();
             let result = df.filter(&mask).unwrap();
             result
         })))
@@ -88,7 +87,7 @@ pub fn query(
     where_node.subscribe_to_node(&orders_csvreader_node, 0);
     hash_join_node.subscribe_to_node(&where_node, 0); // Left Node
     hash_join_node.subscribe_to_node(&customer_csvreader_node, 1); // Right Node
-    groupby_node.subscribe_to_node(&expression_node, 0);
+    groupby_node.subscribe_to_node(&hash_join_node, 0);
     select_node.subscribe_to_node(&groupby_node, 0);
 
     // Output reader subscribe to output node.
