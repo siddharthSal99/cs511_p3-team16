@@ -38,12 +38,12 @@ pub fn query(
         let brand = df.column("p_brand").unwrap();
         let size = df.column("p_size").unwrap();
         let mask = inst.equal("DELIVER IN PERSON").unwrap() 
-        // & 
-        // (
-        //     (brand.equal("Brand#12") & quant.gt_eq(1) & quant.lt_eq(11) & size.gt_eq(1) & size.lt_eq(5)) |
-        //     (brand.equal("Brand#23") & quant.gt_eq(10) & quant.lt_eq(20) & size.gt_eq(1) & size.lt_eq(10)) |
-        //     (brand.equal("Brand#34") & quant.gt_eq(20) & quant.lt_eq(30) & size.gt_eq(1) & size.lt_eq(15))
-        // )
+        & 
+        (
+            (brand.equal("Brand#12").unwrap() & quant.gt_eq(1).unwrap() & quant.lt_eq(11).unwrap() & size.gt_eq(1).unwrap() & size.lt_eq(5).unwrap()) |
+            (brand.equal("Brand#23").unwrap() & quant.gt_eq(10).unwrap() & quant.lt_eq(20).unwrap() & size.gt_eq(1).unwrap() & size.lt_eq(10).unwrap()) |
+            (brand.equal("Brand#34").unwrap() & quant.gt_eq(20).unwrap() & quant.lt_eq(30).unwrap() & size.gt_eq(1).unwrap() & size.lt_eq(15).unwrap())
+        )
         ;
         let result = df.filter(&mask).unwrap();
         result
