@@ -87,7 +87,7 @@ pub fn query(
     hash_join_node.subscribe_to_node(&orders_csvreader_node, 0); // Left Node
     hash_join_node.subscribe_to_node(&customer_csvreader_node, 1); // Right Node
     where_node.subscribe_to_node(&hash_join_node, 0);
-    groupby_node.subscribe_to_node(&hash_join_node, 0);
+    groupby_node.subscribe_to_node(&where_node, 0);
     select_node.subscribe_to_node(&groupby_node, 0);
 
     // Output reader subscribe to output node.
