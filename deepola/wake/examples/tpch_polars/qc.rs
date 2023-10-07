@@ -1,5 +1,6 @@
 // TODO: You need to implement the query c.sql in this file.
 use crate::utils::*;
+use polars::prelude::*;
 
 extern crate wake;
 use polars::prelude::DataFrame;
@@ -63,17 +64,15 @@ pub fn query(
     ]);
 
     // CSVReaderNode would be created for this table.
-    let lineitem_csvreader_node = build_reader_node("lineitem".into(), &tableinput, &table_columns);
-    let orders_csvreader_node = build_reader_node("orders".into(), &tableinput, &table_columns);
-    let customer_csvreader_node = build_reader_node("customer".into(), &tableinput, &table_columns);
+    let lineitem_csvreader_node = build_csv_reader_node("lineitem".into(), &tableinput, &table_columns);
+    let orders_csvreader_node = build_csv_reader_node("orders".into(), &tableinput, &table_columns);
+    let customer_csvreader_node = build_csv_reader_node("customer".into(), &tableinput, &table_columns);
 
     // WHERE Node
     let orders_where_node = AppenderNode::<DataFrame, MapAppender>::new()
         .appender(MapAppender::new(Box::new(|df: &DataFrame| {
-            let var_date_1 = days_since_epoch(1993,10,1);
-            let var_date_2 = days_since_epoch(1994,1,1);
             let a = df.column("o_orderdate").unwrap();
-            let mask = a.gt_eq(var_date_1).unwrap() & a.lt(var_date_2).unwrap();
+            let mask = a.gt_eq("1993-10-01").unwrap() & a.lt("1994-01-01").unwrap();
             df.filter(&mask).unwrap()
         })))
         .build();
@@ -85,11 +84,9 @@ pub fn query(
         .build();
 
     // Merge JOIN Node
-    let mut merger = SortedDfMerger::new();
-    merger.set_left_on(vec!["l_orderkey".into()]);
-    merger.set_right_on(vec!["o_orderkey".into()]);
-    let lo_merge_join_node = MergerNode::<DataFrame, SortedDfMerger>::new()
-        .merger(merger)
+    let lo_merge_join_node = HashJoinBuilder::new()
+        .left_on(vec!["l_orderkey".into()])
+        .right_on(vec!["o_orderkey".into()])
         .build();
 
     let expression_node = AppenderNode::<DataFrame, MapAppender>::new()
@@ -108,15 +105,15 @@ pub fn query(
         .build();
 
     // GROUP BY AGGREGATE Node
-    let mut sum_accumulator = AggAccumulator::new();
+    let mut sum_accumulator = SumAccumulator::new();
     sum_accumulator
         .set_group_key(vec![
-            "o_custkey".into(),
+            "c_custkey".into(),
             "c_name".into(),
             "c_acctbal".into(),
         ])
         .set_aggregates(vec![("disc_price".into(), vec!["sum".into()])]);
-    let groupby_node = AccumulatorNode::<DataFrame, AggAccumulator>::new()
+    let groupby_node = AccumulatorNode::<DataFrame, SumAccumulator>::new()
         .accumulator(sum_accumulator)
         .build();
 
@@ -124,12 +121,12 @@ pub fn query(
     let select_node = AppenderNode::<DataFrame, MapAppender>::new()
         .appender(MapAppender::new(Box::new(|df: &DataFrame| {
             let cols = vec![
-                "o_custkey",
-                "c_name",
-                Series::new("revenue", df.column("disc_price_sum")),
-                "c_acctbal",
+                Series::new("c_custkey", df.column("c_custkey").unwrap()),
+                Series::new("c_name", df.column("c_name").unwrap()),
+                Series::new("revenue", df.column("disc_price_sum").unwrap()),
+                Series::new("c_acctbal", df.column("c_acctbal").unwrap()),
             ];
-            df.select(cols)
+            DataFrame::new(cols)
                 .unwrap()
                 .sort(&["revenue"], vec![true])
                 .unwrap()
@@ -137,13 +134,10 @@ pub fn query(
         .build();
 
     // Connect nodes with subscription
-    lineitem_where_node.subscribe_to_node(&lineitem_csvreader_node, 0);
     orders_where_node.subscribe_to_node(&orders_csvreader_node, 0);
-    // cn_hash_join_node.subscribe_to_node(&customer_csvreader_node, 0);
-    // cn_hash_join_node.subscribe_to_node(&nation_csvreader_node, 1);
     oc_hash_join_node.subscribe_to_node(&orders_where_node, 0);
     oc_hash_join_node.subscribe_to_node(&customer_csvreader_node, 1);
-    lo_merge_join_node.subscribe_to_node(&lineitem_where_node, 0); // Left Node
+    lo_merge_join_node.subscribe_to_node(&lineitem_csvreader_node, 0); // Left Node
     lo_merge_join_node.subscribe_to_node(&oc_hash_join_node, 1); // Right Node
     expression_node.subscribe_to_node(&lo_merge_join_node, 0);
     groupby_node.subscribe_to_node(&expression_node, 0);
@@ -157,7 +151,6 @@ pub fn query(
     service.add(lineitem_csvreader_node);
     service.add(customer_csvreader_node);
     service.add(orders_csvreader_node);
-    service.add(lineitem_where_node);
     service.add(orders_where_node);
     service.add(oc_hash_join_node);
     service.add(lo_merge_join_node);
