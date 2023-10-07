@@ -91,11 +91,10 @@ pub fn query(
     .build();
 
     // Connect nodes with subscription
-    where_node.subscribe_to_node(&lineitem_csvreader_node, 0);
-    where_node.subscribe_to_node(&part_csvreader_node, 1);
-    hash_join_node.subscribe_to_node(&where_node, 0); // Left Node
+    hash_join_node.subscribe_to_node(&lineitem_csvreader_node, 0); // Left Node
     hash_join_node.subscribe_to_node(&part_csvreader_node, 1); // Right Node
-    expression_node.subscribe_to_node(&hash_join_node, 0);
+    where_node.subscribe_to_node(&hash_join_node, 0);
+    expression_node.subscribe_to_node(&where_node, 0);
     groupby_node.subscribe_to_node(&expression_node, 0);
     select_node.subscribe_to_node(&groupby_node, 0);
 
