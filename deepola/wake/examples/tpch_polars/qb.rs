@@ -54,8 +54,8 @@ pub fn query(
         .build();
 
     let hash_join_node = HashJoinBuilder::new()
-        .left_on(vec!["l_partkey".into()])
-        .right_on(vec!["p_partkey".into()])
+        .left_on(vec!["o_custkey".into()])
+        .right_on(vec!["c_custkey".into()])
         .build();
 
     // GROUP BY Aggregate Node
