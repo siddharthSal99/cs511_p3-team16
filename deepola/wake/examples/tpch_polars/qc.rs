@@ -79,12 +79,12 @@ pub fn query(
 
     // HASH JOIN Node
     let oc_hash_join_node = HashJoinBuilder::new()
-        .left_on(vec!["o_custkey".into()])
-        .right_on(vec!["c_custkey".into()])
+        .left_on(vec!["c_custkey".into()])
+        .right_on(vec!["o_custkey".into()])
         .build();
 
     // Merge JOIN Node
-    let lo_merge_join_node = HashJoinBuilder::new()
+    let lo_hash_join_node = HashJoinBuilder::new()
         .left_on(vec!["l_orderkey".into()])
         .right_on(vec!["o_orderkey".into()])
         .build();
@@ -123,8 +123,8 @@ pub fn query(
             let cols = vec![
                 Series::new("c_custkey", df.column("c_custkey").unwrap()),
                 Series::new("c_name", df.column("c_name").unwrap()),
-                Series::new("revenue", df.column("disc_price_sum").unwrap()),
                 Series::new("c_acctbal", df.column("c_acctbal").unwrap()),
+                Series::new("revenue", df.column("disc_price_sum").unwrap()),
             ];
             DataFrame::new(cols)
                 .unwrap()
@@ -135,11 +135,11 @@ pub fn query(
 
     // Connect nodes with subscription
     orders_where_node.subscribe_to_node(&orders_csvreader_node, 0);
-    oc_hash_join_node.subscribe_to_node(&orders_where_node, 0);
-    oc_hash_join_node.subscribe_to_node(&customer_csvreader_node, 1);
-    lo_merge_join_node.subscribe_to_node(&lineitem_csvreader_node, 0); // Left Node
-    lo_merge_join_node.subscribe_to_node(&oc_hash_join_node, 1); // Right Node
-    expression_node.subscribe_to_node(&lo_merge_join_node, 0);
+    oc_hash_join_node.subscribe_to_node(&orders_where_node, 1);
+    oc_hash_join_node.subscribe_to_node(&customer_csvreader_node, 0);
+    lo_hash_join_node.subscribe_to_node(&lineitem_csvreader_node, 0); // Left Node
+    lo_hash_join_node.subscribe_to_node(&oc_hash_join_node, 1); // Right Node
+    expression_node.subscribe_to_node(&lo_hash_join_node, 0);
     groupby_node.subscribe_to_node(&expression_node, 0);
     select_node.subscribe_to_node(&groupby_node, 0);
 
@@ -153,7 +153,7 @@ pub fn query(
     service.add(orders_csvreader_node);
     service.add(orders_where_node);
     service.add(oc_hash_join_node);
-    service.add(lo_merge_join_node);
+    service.add(lo_hash_join_node);
     service.add(expression_node);
     service.add(groupby_node);
     service.add(select_node);
