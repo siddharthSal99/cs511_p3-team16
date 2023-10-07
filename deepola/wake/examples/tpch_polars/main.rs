@@ -9,8 +9,8 @@ use wake::graph::*;
 // TODO: UNCOMMENT THE IMPORT STATEMENTS BELOW AS YOU IMPLEMENT THESE QUERIES.
 mod q1;
 mod q14;
-// mod qa;
-// mod qb;
+mod qa;
+mod qb;
 // mod qc;
 // mod qd;
 mod tests;
